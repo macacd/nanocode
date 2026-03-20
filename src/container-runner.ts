@@ -105,7 +105,7 @@ export async function runAgentInContainer(options: RunOptions): Promise<AgentRes
   if (config.containerRuntime === 'docker') {
     return runInDocker(groupId, groupDir, fullPrompt, timeout, startTime);
   } else {
-    return runDirectly(groupDir, fullPrompt, timeout, startTime);
+    return runDirectly(groupDir, fullPrompt, timeout, startTime, config.defaultModel);
   }
 }
 
@@ -206,11 +206,18 @@ async function runDirectly(
   groupDir: string,
   prompt: string,
   timeout: number,
-  startTime: number
+  startTime: number,
+  model?: string
 ): Promise<AgentResponse> {
   // Escape quotes in the prompt
   const escapedPrompt = prompt.replace(/"/g, '\\"');
-  const command = `opencode run "${escapedPrompt}"`;
+  
+  // Build command with explicit model if provided
+  let command = `opencode run`;
+  if (model) {
+    command += ` --model ${model}`;
+  }
+  command += ` "${escapedPrompt}"`;
   
   console.log(`🤖 Running: ${command}`);
   console.log(`   Directory: ${groupDir}`);

@@ -6,6 +6,7 @@ import { groupQueueManager } from './group-queue.js';
 import { taskScheduler } from './task-scheduler.js';
 import { runAgentInContainer, isDockerAvailable, ensureImageExists } from './container-runner.js';
 import type { Message, Config } from './types.js';
+import { loadSecrets } from './secrets.js';
 
 /**
  * NanoCode - A lightweight AI assistant using OpenCode
@@ -48,6 +49,9 @@ async function main(): Promise<void> {
 `);
 
   console.log('🚀 Starting NanoCode...\n');
+
+  // Load secrets from AWS SSM Parameter Store if available
+  await loadSecrets();
 
   // Initialize database
   console.log('📦 Initializing database...');
