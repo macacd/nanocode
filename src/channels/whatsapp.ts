@@ -104,6 +104,7 @@ export class WhatsAppChannel implements Channel {
             metadata: {
               hasMedia: msg.hasMedia,
               type: msg.type,
+              isGroup: chat.isGroup,
             },
           };
 

@@ -122,7 +122,18 @@ function shouldProcessMessage(message: Message): boolean {
     return false;
   }
 
-  // Check for trigger word
+  // Determine if it's a group chat based on channel metadata
+  let isGroupChat = true; // Assume group by default to be safe
+  if (message.channelType === 'whatsapp' && message.metadata && 'isGroup' in message.metadata) {
+    isGroupChat = message.metadata.isGroup as boolean;
+  }
+
+  // If it's a private chat (not a group), process all messages
+  if (!isGroupChat) {
+    return true;
+  }
+
+  // For groups, check for trigger word
   const triggerWord = config.triggerWord.toLowerCase();
   const content = message.content.toLowerCase();
 
