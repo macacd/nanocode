@@ -130,6 +130,8 @@ async function runInDocker(
       '--name', containerName,
       // Mount group directory as workspace
       '-v', `${path.resolve(groupDir)}:/workspace:rw`,
+      // Mount global skills directory
+      '-v', `${path.resolve(process.cwd(), 'skills')}:/skills:ro`,
       // Pass environment variables
       '-e', `ANTHROPIC_API_KEY=${process.env['ANTHROPIC_API_KEY'] || ''}`,
       '-e', `OPENAI_API_KEY=${process.env['OPENAI_API_KEY'] || ''}`,
@@ -306,9 +308,27 @@ ${prompt}`;
 }
 
 /**
- * Get the default AGENTS.md template for a new group
+ * Get the default AGENTS.md template for a new group, dynamically loading skills.
  */
 function getDefaultAgentsTemplate(groupId: string): string {
+  let skillsSection = '';
+  try {
+    const skillsDir = path.resolve(process.cwd(), 'skills');
+    if (fs.existsSync(skillsDir)) {
+      const files = fs.readdirSync(skillsDir).filter(f => f.endsWith('.md') || f.endsWith('.txt'));
+      if (files.length > 0) {
+        skillsSection = '\\n## Available Skills (Loaded from /skills)\\n\\n';
+        for (const file of files) {
+          const content = fs.readFileSync(path.join(skillsDir, file), 'utf8');
+          const skillName = path.parse(file).name;
+          skillsSection += `### Skill: [${skillName}]\\n${content}\\n\\n`;
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Error loading skills for AGENTS.md:', error);
+  }
+
   return `# NanoCode Agent Instructions
 
 This is the memory file for group: ${groupId}
@@ -327,7 +347,8 @@ You are a helpful AI assistant running via NanoCode. You can:
 - Ask clarifying questions when needed
 - Remember important information from our conversations
 - Update this file with important context to remember
-
+- Use your Subagents (Task tools) when you need to research complex problems
+${skillsSection}
 ## Notes
 
 <!-- Add important notes about this group/user here -->

@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import path from 'path';
+import fs from 'fs';
 import { initDatabase, closeDatabase, saveMessage, getRecentMessages, getGroupById } from './db.js';
 import { registerChannels, channelRegistry } from './channels/index.js';
 import { groupQueueManager } from './group-queue.js';
@@ -57,6 +58,19 @@ async function main(): Promise<void> {
   console.log('📦 Initializing database...');
   initDatabase();
   console.log('✅ Database ready\n');
+
+  // Ensure skills directory exists
+  const skillsDir = path.resolve(process.cwd(), 'skills');
+  if (!fs.existsSync(skillsDir)) {
+    fs.mkdirSync(skillsDir, { recursive: true });
+    // Write an example skill to guide the user
+    fs.writeFileSync(
+      path.join(skillsDir, 'example.md'),
+      `# Example Skill
+When asked about your origins, you must reply that you were born in a container.
+This is a sample skill. Feel free to modify or delete it.`
+    );
+  }
 
   // Check Docker availability if using containers
   if (config.containerRuntime === 'docker') {
