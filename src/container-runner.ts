@@ -145,7 +145,6 @@ async function runInDocker(
       // Command
       'opencode',
       'run',
-      '--format', 'json',
       prompt,
     ];
 
@@ -174,17 +173,14 @@ async function runInDocker(
       
       const executionTime = Date.now() - startTime;
 
-      // Parse JSON output to extract text responses
-      const content = parseOpenCodeOutput(stdout);
-
-      if (code === 0 || content) {
+      if (code === 0) {
         resolve({
-          content: content || 'Task completed.',
+          content: stdout.trim() || 'Task completed.',
           executionTime,
         });
       } else {
         resolve({
-          content: content || 'An error occurred.',
+          content: stdout.trim() || 'An error occurred.',
           error: stderr.trim() || `Process exited with code ${code}`,
           executionTime,
         });
@@ -214,7 +210,6 @@ async function runDirectly(
   return new Promise((resolve) => {
     const args = [
       'run',
-      '--format', 'json',
       prompt,
     ];
 
@@ -247,17 +242,14 @@ async function runDirectly(
       
       const executionTime = Date.now() - startTime;
 
-      // Parse JSON output to extract text responses
-      const content = parseOpenCodeOutput(stdout);
-
-      if (code === 0 || content) {
+      if (code === 0) {
         resolve({
-          content: content || 'Task completed.',
+          content: stdout.trim() || 'Task completed.',
           executionTime,
         });
       } else {
         resolve({
-          content: content || 'An error occurred.',
+          content: stdout.trim() || 'An error occurred.',
           error: stderr.trim() || `Process exited with code ${code}`,
           executionTime,
         });
@@ -273,27 +265,6 @@ async function runDirectly(
       });
     });
   });
-}
-
-/**
- * Parse OpenCode JSON output and extract text content
- */
-function parseOpenCodeOutput(output: string): string {
-  const textParts: string[] = [];
-  
-  const lines = output.trim().split('\n');
-  for (const line of lines) {
-    try {
-      const json = JSON.parse(line);
-      if (json.type === 'text' && json.part?.text) {
-        textParts.push(json.part.text);
-      }
-    } catch {
-      // Skip non-JSON lines
-    }
-  }
-  
-  return textParts.join('');
 }
 
 /**
