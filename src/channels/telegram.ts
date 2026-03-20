@@ -70,7 +70,7 @@ export class TelegramChannel implements Channel {
           channelType: 'telegram',
           senderId: ctx.from?.id.toString() || 'unknown',
           senderName,
-          content: ctx.message.text,
+          content: ctx.message.text || '',
           timestamp: ctx.message.date * 1000,
           isFromBot: ctx.from?.is_bot || false,
           metadata: {
