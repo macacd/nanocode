@@ -144,9 +144,8 @@ async function runInDocker(
       CONTAINER_IMAGE,
       // Command
       'opencode',
-      '--print',
-      '--yes',
-      '-m', prompt,
+      'run',
+      prompt,
     ];
 
     let stdout = '';
@@ -210,9 +209,8 @@ async function runDirectly(
 ): Promise<AgentResponse> {
   return new Promise((resolve) => {
     const args = [
-      '--print',
-      '--yes',
-      '-m', prompt,
+      'run',
+      prompt,
     ];
 
     let stdout = '';
