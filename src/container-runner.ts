@@ -1,4 +1,4 @@
-import { spawn, type ChildProcess } from 'child_process';
+import { spawn, execSync, type ChildProcess } from 'child_process';
 import path from 'path';
 import fs from 'fs';
 import type { AgentResponse, Config } from './types.js';
@@ -200,6 +200,7 @@ async function runInDocker(
 
 /**
  * Run OpenCode directly (no container)
+ * Uses execSync because spawn doesn't work properly with opencode CLI
  */
 async function runDirectly(
   groupDir: string,
@@ -207,65 +208,75 @@ async function runDirectly(
   timeout: number,
   startTime: number
 ): Promise<AgentResponse> {
-  return new Promise((resolve) => {
-    const args = [
-      'run',
-      prompt,
-    ];
-
-    let stdout = '';
-    let stderr = '';
-
-    const proc = spawn('opencode', args, {
-      stdio: 'pipe',
+  // Escape quotes in the prompt
+  const escapedPrompt = prompt.replace(/"/g, '\\"');
+  const command = `opencode run "${escapedPrompt}"`;
+  
+  console.log(`🤖 Running: ${command}`);
+  console.log(`   Directory: ${groupDir}`);
+  
+  try {
+    const stdout = execSync(command, {
       cwd: groupDir,
+      encoding: 'utf8',
+      timeout: timeout,
       env: {
         ...process.env,
         HOME: process.env['HOME'],
+        PATH: process.env['PATH'],
       },
+      maxBuffer: 10 * 1024 * 1024, // 10MB
     });
-
-    const timeoutId = setTimeout(() => {
-      proc.kill('SIGTERM');
-    }, timeout);
-
-    proc.stdout?.on('data', (data) => {
-      stdout += data.toString();
-    });
-
-    proc.stderr?.on('data', (data) => {
-      stderr += data.toString();
-    });
-
-    proc.on('close', (code) => {
-      clearTimeout(timeoutId);
-      
-      const executionTime = Date.now() - startTime;
-
-      if (code === 0) {
-        resolve({
-          content: stdout.trim() || 'Task completed.',
-          executionTime,
-        });
-      } else {
-        resolve({
-          content: stdout.trim() || 'An error occurred.',
-          error: stderr.trim() || `Process exited with code ${code}`,
-          executionTime,
-        });
-      }
-    });
-
-    proc.on('error', (err) => {
-      clearTimeout(timeoutId);
-      resolve({
-        content: '',
-        error: `Failed to start OpenCode: ${err.message}`,
-        executionTime: Date.now() - startTime,
-      });
-    });
-  });
+    
+    const executionTime = Date.now() - startTime;
+    
+    // Clean ANSI codes from output
+    const cleanOutput = cleanAnsiCodes(stdout);
+    
+    console.log(`✅ Response received in ${executionTime}ms`);
+    
+    return {
+      content: cleanOutput || 'Task completed.',
+      executionTime,
+    };
+  } catch (error: any) {
+    const executionTime = Date.now() - startTime;
+    
+    // execSync throws on non-zero exit, but stdout may still have content
+    const stdout = error.stdout ? cleanAnsiCodes(error.stdout.toString()) : '';
+    const stderr = error.stderr ? error.stderr.toString() : '';
+    
+    console.log(`❌ Error after ${executionTime}ms: ${error.message}`);
+    
+    return {
+      content: stdout || 'An error occurred.',
+      error: stderr || error.message,
+      executionTime,
+    };
+  }
 }
+
+/**
+ * Remove ANSI escape codes from text
+ */
+function cleanAnsiCodes(text: string): string {
+  return text
+    .replace(/\x1b\[[0-9;]*m/g, '') // Remove color codes
+    .replace(/\x1b\[[0-9;]*[A-Za-z]/g, '') // Remove other escape sequences
+    .split('\n')
+    .filter(line => {
+      const trimmed = line.trim();
+      // Filter out metadata lines
+      if (!trimmed) return false;
+      if (trimmed.startsWith('>')) return false;
+      if (trimmed.includes('·') && trimmed.includes('claude')) return false;
+      return true;
+    })
+    .join('\n')
+    .trim();
+}
+
+
 
 /**
  * Build the prompt with conversation history
