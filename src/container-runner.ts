@@ -103,7 +103,7 @@ export async function runAgentInContainer(options: RunOptions): Promise<AgentRes
 
   // Run in container or directly based on config
   if (config.containerRuntime === 'docker') {
-    return runInDocker(groupId, groupDir, fullPrompt, timeout, startTime);
+    return runInDocker(groupId, groupDir, fullPrompt, timeout, startTime, config.defaultModel);
   } else {
     return runDirectly(groupDir, fullPrompt, timeout, startTime, config.defaultModel);
   }
@@ -117,7 +117,8 @@ async function runInDocker(
   groupDir: string,
   prompt: string,
   timeout: number,
-  startTime: number
+  startTime: number,
+  model?: string
 ): Promise<AgentResponse> {
   return new Promise((resolve) => {
     const containerName = `nanocode-${groupId}-${Date.now()}`;
@@ -133,6 +134,7 @@ async function runInDocker(
       '-e', `ANTHROPIC_API_KEY=${process.env['ANTHROPIC_API_KEY'] || ''}`,
       '-e', `OPENAI_API_KEY=${process.env['OPENAI_API_KEY'] || ''}`,
       '-e', `OPENCODE_ZEN_API_KEY=${process.env['OPENCODE_ZEN_API_KEY'] || ''}`,
+      '-e', `GOOGLE_GENERATIVE_AI_API_KEY=${process.env['GOOGLE_GENERATIVE_AI_API_KEY'] || ''}`,
       // Set working directory
       '-w', '/workspace',
       // Resource limits
@@ -145,6 +147,7 @@ async function runInDocker(
       // Command
       'opencode',
       'run',
+      ...(model ? ['--model', model] : []),
       prompt,
     ];
 
@@ -172,16 +175,18 @@ async function runInDocker(
       clearTimeout(timeoutId);
       
       const executionTime = Date.now() - startTime;
+      const cleanOutput = cleanAnsiCodes(stdout);
 
       if (code === 0) {
         resolve({
-          content: stdout.trim() || 'Task completed.',
+          content: cleanOutput || 'Task completed.',
           executionTime,
         });
       } else {
+        const stderrStr = stderr ? cleanAnsiCodes(stderr) : '';
         resolve({
-          content: stdout.trim() || 'An error occurred.',
-          error: stderr.trim() || `Process exited with code ${code}`,
+          content: cleanOutput || 'An error occurred.',
+          error: stderrStr || `Process exited with code ${code}`,
           executionTime,
         });
       }
