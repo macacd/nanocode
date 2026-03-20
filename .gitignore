@@ -1,0 +1,45 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Data files
+data/
+*.db
+*.db-wal
+*.db-shm
+
+# WhatsApp session
+.wwebjs_auth/
+.wwebjs_cache/
+
+# Group filesystems (may contain sensitive data)
+groups/*/
+
+# Logs
+*.log
+logs/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Test coverage
+coverage/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
