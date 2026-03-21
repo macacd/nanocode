@@ -170,7 +170,7 @@ async function runInDocker(
       // Command Wrapper
       'bash',
       '-c',
-      `NODE_PATH=/workspace/node_modules node /mcp/google-workspace/index.js & MCP_PID=\$!; sleep 3; opencode run ${model ? `--model ${model}` : ''} "${prompt.replace(/"/g, '\\"')}"; kill \$MCP_PID 2>/dev/null`
+      `cp -r /mcp/google-workspace /tmp/mcp-server && NODE_PATH=/workspace/node_modules node /tmp/mcp-server/index.js & MCP_PID=\$!; sleep 3; opencode run ${model ? `--model ${model}` : ''} "${prompt.replace(/"/g, '\\"')}"; kill \$MCP_PID 2>/dev/null`
     ];
 
     let stdout = '';
