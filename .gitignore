@@ -43,3 +43,6 @@ coverage/
 tmp/
 temp/
 *.tmp
+
+.google_tokens
+credentials.json

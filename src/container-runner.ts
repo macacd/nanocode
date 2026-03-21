@@ -92,6 +92,20 @@ export async function runAgentInContainer(options: RunOptions): Promise<AgentRes
     fs.mkdirSync(groupDir, { recursive: true });
   }
 
+  // Ensure OpenCode MCP server config exists
+  const mcpConfigPath = path.join(groupDir, 'mcp.json');
+  if (!fs.existsSync(mcpConfigPath)) {
+    const mcpConfig = {
+      "mcpServers": {
+        "google-workspace": {
+          "command": "node",
+          "args": ["/mcp/google-workspace/index.js"]
+        }
+      }
+    };
+    fs.writeFileSync(mcpConfigPath, JSON.stringify(mcpConfig, null, 2));
+  }
+
   // Ensure AGENTS.md exists for the group
   const agentsFile = path.join(groupDir, 'AGENTS.md');
   if (!fs.existsSync(agentsFile)) {
@@ -132,11 +146,18 @@ async function runInDocker(
       '-v', `${path.resolve(groupDir)}:/workspace:rw`,
       // Mount global skills directory
       '-v', `${path.resolve(process.cwd(), 'skills')}:/skills:ro`,
+      // Mount built MCP directory to the container
+      '-v', `${path.resolve(process.cwd(), 'dist', 'mcp')}:/mcp:ro`,
+      // Mount node_modules so the MCP server has its dependencies
+      '-v', `${path.resolve(process.cwd(), 'node_modules')}:/workspace/node_modules:ro`,
       // Pass environment variables
       '-e', `ANTHROPIC_API_KEY=${process.env['ANTHROPIC_API_KEY'] || ''}`,
       '-e', `OPENAI_API_KEY=${process.env['OPENAI_API_KEY'] || ''}`,
       '-e', `OPENCODE_ZEN_API_KEY=${process.env['OPENCODE_ZEN_API_KEY'] || ''}`,
       '-e', `GOOGLE_GENERATIVE_AI_API_KEY=${process.env['GOOGLE_GENERATIVE_AI_API_KEY'] || ''}`,
+      '-e', `GOOGLE_CLIENT_ID=${process.env['GOOGLE_CLIENT_ID'] || ''}`,
+      '-e', `GOOGLE_CLIENT_SECRET=${process.env['GOOGLE_CLIENT_SECRET'] || ''}`,
+      '-e', `GOOGLE_REFRESH_TOKEN=${process.env['GOOGLE_REFRESH_TOKEN'] || ''}`,
       // Set working directory
       '-w', '/workspace',
       // Resource limits
@@ -146,11 +167,10 @@ async function runInDocker(
       '--network', 'bridge',
       // Image
       CONTAINER_IMAGE,
-      // Command
-      'opencode',
-      'run',
-      ...(model ? ['--model', model] : []),
-      prompt,
+      // Command Wrapper
+      'bash',
+      '-c',
+      `mkdir -p ~/.opencode && echo '{"mcpServers":{"google-workspace":{"command":"node","args":["/mcp/google-workspace/index.js"]}}}' > ~/.opencode/config.json && opencode run ${model ? `--model ${model}` : ''} "${prompt.replace(/"/g, '\\"')}"`
     ];
 
     let stdout = '';
