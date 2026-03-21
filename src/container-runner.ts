@@ -92,20 +92,6 @@ export async function runAgentInContainer(options: RunOptions): Promise<AgentRes
     fs.mkdirSync(groupDir, { recursive: true });
   }
 
-  // Ensure OpenCode MCP server config exists
-  const mcpConfigPath = path.join(groupDir, 'mcp.json');
-  if (!fs.existsSync(mcpConfigPath)) {
-    const mcpConfig = {
-      "mcpServers": {
-        "google-workspace": {
-          "command": "node",
-          "args": ["/mcp/google-workspace/index.js"]
-        }
-      }
-    };
-    fs.writeFileSync(mcpConfigPath, JSON.stringify(mcpConfig, null, 2));
-  }
-
   // Ensure AGENTS.md exists for the group
   const agentsFile = path.join(groupDir, 'AGENTS.md');
   if (!fs.existsSync(agentsFile)) {
@@ -146,10 +132,8 @@ async function runInDocker(
       '-v', `${path.resolve(groupDir)}:/workspace:rw`,
       // Mount global skills directory
       '-v', `${path.resolve(process.cwd(), 'skills')}:/skills:ro`,
-      // Mount built MCP directory to the container
-      '-v', `${path.resolve(process.cwd(), 'dist', 'mcp')}:/mcp:ro`,
-      // Mount node_modules so the MCP server has its dependencies
-      '-v', `${path.resolve(process.cwd(), 'node_modules')}:/workspace/node_modules:ro`,
+      // Mount bash scripts for external APIs (Google Workspace, ClickUp, etc.)
+      '-v', `${path.resolve(process.cwd(), 'scripts')}:/scripts:ro`,
       // Pass environment variables
       '-e', `ANTHROPIC_API_KEY=${process.env['ANTHROPIC_API_KEY'] || ''}`,
       '-e', `OPENAI_API_KEY=${process.env['OPENAI_API_KEY'] || ''}`,
@@ -167,10 +151,11 @@ async function runInDocker(
       '--network', 'bridge',
       // Image
       CONTAINER_IMAGE,
-      // Command Wrapper
-      'bash',
-      '-c',
-      `cp -r /mcp/google-workspace /tmp/mcp-server && NODE_PATH=/workspace/node_modules node /tmp/mcp-server/index.js & MCP_PID=\$!; sleep 3; opencode run ${model ? `--model ${model}` : ''} "${prompt.replace(/"/g, '\\"')}"; kill \$MCP_PID 2>/dev/null`
+      // Command: run opencode directly
+      'opencode',
+      'run',
+      ...(model ? ['--model', model] : []),
+      prompt,
     ];
 
     let stdout = '';
