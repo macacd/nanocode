@@ -1,0 +1,13 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "nanocode": {
+      "type": "local",
+      "command": [
+        "node",
+        "/mcp/nanocode-mcp-server.js"
+      ],
+      "enabled": true
+    }
+  }
+}
